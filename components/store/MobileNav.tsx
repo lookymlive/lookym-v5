@@ -9,7 +9,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Icons } from "@/components/ui/icons"
-import { cn } from "@/lib/utils"
+import { cn } from "@/app/lib/utils"
 
 const menuItems = [
   {

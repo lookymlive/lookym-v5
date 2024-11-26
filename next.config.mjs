@@ -5,7 +5,7 @@ const nextConfig = {
     return config;
   },
   images: {
-    domains: ["i.giphy.com"],
+    domains: ["i.giphy.com", "images.unsplash.com"],
   },
   experimental: {
     serverActions: {
