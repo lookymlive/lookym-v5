@@ -3,6 +3,7 @@ import { IUser } from '../models/user';
 import UserModel from '../models/user';
 
 interface ExtendedUser extends IUser {
+  _id?: string;
   lockUntil?: Date;
   failedLoginAttempts?: number;
 }

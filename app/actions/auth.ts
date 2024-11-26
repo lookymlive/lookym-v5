@@ -9,7 +9,7 @@ import {
   passwordValidationSchema,
   signInSchema,
 } from "@/app/utils/verificationSchema";
-import { auth, signIn, unstable_update } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import mail from "@/app/utils/mail";
@@ -30,12 +30,11 @@ const handleVerificationToken = async (user: {
 }) => {
   const userId = user.id;
   const token = crypto.randomBytes(36).toString("hex");
-  //   randomToken = 1234hgh = db (hash)
 
   await startDb();
   await VerificationTokenModel.findOneAndDelete({ userId });
   await VerificationTokenModel.create({ token, userId });
-  const link = `${process.env.VERIFICATION_LINK}?token=${token}&userId=${userId}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify?token=${token}&userId=${userId}`;
   await mail.sendVerificationMail({ link, name: user.name, to: user.email });
 };
 
@@ -52,6 +51,7 @@ const signUpSchema = z.object({
 export interface AuthResponse {
   error: string | null;
   success: boolean;
+  fieldErrors?: Record<string, string[] | undefined>;
 }
 
 export const signUp = async (
@@ -69,7 +69,11 @@ export const signUp = async (
   });
 
   if (!result.success) {
-    return { success: false, errors: result.error.formErrors.fieldErrors };
+    return { 
+      success: false, 
+      fieldErrors: result.error.formErrors.fieldErrors,
+      error: null
+    };
   }
 
   const { email, name, password, role, storeName, storeType, description } = result.data;
@@ -101,7 +105,7 @@ export const signUp = async (
   await handleVerificationToken({ email, id: user._id.toString(), name });
   await signIn("credentials", { email, password, redirectTo: "/" });
 
-  return { success: true };
+  return { success: true, error: null };
 };
 
 export const continueWithCredentials = async (
@@ -114,7 +118,7 @@ export const continueWithCredentials = async (
       password: data.get("password"),
     });
     if (!result.success)
-      return { success: false, errors: result.error.formErrors.fieldErrors };
+      return { success: false, fieldErrors: result.error.formErrors.fieldErrors, error: null };
 
     const { email, password } = result.data;
 
@@ -123,7 +127,7 @@ export const continueWithCredentials = async (
       password,
       redirectTo: "/",
     });
-    return { success: true };
+    return { success: true, error: null };
   } catch (error) {
     let errorMsg = "";
     if (error instanceof Error && error.message === "NEXT_REDIRECT") {
@@ -133,7 +137,7 @@ export const continueWithCredentials = async (
     } else {
       errorMsg = (error as any).message;
     }
-    return { error: errorMsg, success: false };
+    return { error: errorMsg, success: false, fieldErrors: { email: [errorMsg] } };
   }
 };
 
@@ -146,12 +150,6 @@ export const generateVerificationLink = async (
   const session = await auth();
   if (!session) return { success: false };
 
-  const user = await UserModel.findById(session.user.id);
-  if (user?.verified) {
-    // user is already verified
-    return { success: false };
-  }
-
   const { email, id, name } = session.user;
   await handleVerificationToken({ email, id, name });
   return { success: true };
@@ -159,45 +157,29 @@ export const generateVerificationLink = async (
 
 export const updateProfileInfo = async (data: FormData) => {
   const session = await auth();
-  if (!session) return;
-
-  const userInfo: { name?: string; avatar?: { id: string; url: string } } = {};
-
-  const name = data.get("name");
-  const avatar = data.get("avatar");
-  if (typeof name === "string" && name.trim().length >= 3) {
-    userInfo.name = name;
+  
+  if (!session) {
+    throw new Error("Not authenticated");
   }
 
-  if (avatar instanceof File && avatar.type.startsWith("image")) {
-    const result = await uploadFileToCloud(avatar);
-    if (result) {
-      userInfo.avatar = { id: result.public_id, url: result.secure_url };
-    }
-
-    // const arrayBuffer = await avatar.arrayBuffer()
-    // const buffer: Buffer = Buffer.from(arrayBuffer)
-
-    // const stream = cloud.uploader.upload_stream({}, (err, result) => {
-    //   if(err) throw err
-    //   else
-
-    // })
-
-    // streamifier.createReadStream(buffer).pipe(stream)
-  }
+  const userInfo = {
+    name: data.get("name") as string,
+    avatar: data.get("avatar") ? JSON.parse(data.get("avatar") as string) : undefined,
+  };
 
   await startDb();
   await UserModel.findByIdAndUpdate(session.user.id, {
     ...userInfo,
   });
-  await unstable_update({
-    user: {
-      ...session.user,
-      name: userInfo.name,
-      avatar: userInfo.avatar?.url,
-    },
-  });
+
+  // Update session data
+  const updatedSession = await auth();
+  if (updatedSession) {
+    updatedSession.user.name = userInfo.name;
+    if (userInfo.avatar) {
+      updatedSession.user.avatar = userInfo.avatar.url;
+    }
+  }
 };
 
 interface ResetPassResponse {
@@ -259,7 +241,7 @@ export async function updatePassword(
     token: data.get("token"),
   });
 
-  if (!result.success) return { error: result.error.errors[0].message };
+  if (!result.success) return { error: result.error.errors[0].message, success: false };
 
   const { password, token } = result.data;
   await startDb();
@@ -270,14 +252,14 @@ export async function updatePassword(
     expires: { $gt: new Date() }
   });
 
-  if (!resetToken) return { error: "Invalid or expired token!" };
+  if (!resetToken) return { error: "Invalid or expired token!", success: false };
 
   if (resetToken.isExpired()) {
-    return { error: "Token has expired!" };
+    return { error: "Token has expired!", success: false };
   }
 
   const user = await UserModel.findById(resetToken.userId);
-  if (!user) return { error: "User not found!" };
+  if (!user) return { error: "User not found!", success: false };
 
   // Hash the new password
   const salt = genSaltSync(10);
@@ -289,5 +271,5 @@ export async function updatePassword(
     PassResetTokenModel.findByIdAndUpdate(resetToken._id, { used: true })
   ]);
 
-  return { success: true };
+  return { success: true, error: null };
 }

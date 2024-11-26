@@ -1,99 +1,125 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createVerificationToken } from "@/app/utils/auth-utils";
+import VerificationTokenModel from "@/app/models/verificationToken";
 import UserModel from '@/app/models/user';
-import { isTokenExpired } from '@/app/utils/auth-utils';
 import startDb from '@/app/lib/db';
+import { createVerificationToken } from '@/app/utils/auth-utils';
+import { generateVerificationEmail, sendEmail } from '@/app/utils/email-service';
+import { rateLimiter } from '@/app/middleware/rateLimit';
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const token = req.nextUrl.searchParams.get('token');
-    if (!token) {
+    const { token, userId, action } = await req.json();
+
+    // Handle resend verification email
+    if (action === 'resend') {
+      // Apply rate limiting for resend
+      const rateLimit = await rateLimiter(req, {
+        maxRequests: 3,
+        windowMs: 60 * 60 * 1000 // 1 hour
+      });
+      
+      if (rateLimit.status === 429) {
+        return rateLimit;
+      }
+
+      await startDb();
+      const user = await UserModel.findById(userId);
+      
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+
+      if (user.verified) {
+        return NextResponse.json(
+          { error: 'Email already verified' },
+          { status: 400 }
+        );
+      }
+
+      // Generate new verification token
+      const newToken = await createVerificationToken(userId);
+      
+      // Send verification email
+      const emailData = generateVerificationEmail(user.email, newToken);
+      await sendEmail(emailData);
+
+      return NextResponse.json({ 
+        message: 'Verification email sent successfully' 
+      });
+    }
+
+    // Handle verify email
+    if (!token || !userId) {
       return NextResponse.json(
-        { error: 'Verification token is required' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
     await startDb();
-    const user = await UserModel.findOne({
-      verificationToken: token,
-      verified: false
-    });
 
-    if (!user) {
+    // Find and validate the verification token
+    const verificationToken = await VerificationTokenModel.findOne({ userId });
+
+    if (!verificationToken || !verificationToken.compare(token)) {
       return NextResponse.json(
         { error: 'Invalid verification token' },
         { status: 400 }
       );
     }
 
-    if (isTokenExpired(user.verificationTokenExpiry)) {
-      return NextResponse.json(
-        { error: 'Verification token has expired' },
-        { status: 400 }
-      );
-    }
-
     // Update user verification status
-    await UserModel.findByIdAndUpdate(user._id, {
+    await UserModel.findByIdAndUpdate(userId, {
       verified: true,
-      emailVerified: new Date(),
-      verificationToken: null,
-      verificationTokenExpiry: null
+      emailVerified: new Date()
     });
 
-    return NextResponse.json({
-      message: 'Email verified successfully'
-    });
+    // Delete the verification token
+    await VerificationTokenModel.findOneAndDelete({ userId });
+
+    return NextResponse.json({ message: 'Email verified successfully' });
   } catch (error) {
-    console.error('Email verification error:', error);
+    console.error('Verification error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Something went wrong' },
       { status: 500 }
     );
   }
 }
 
-export async function POST(req: NextRequest) {
+// Optional: Add GET endpoint to validate token without verifying
+export async function GET(req: NextRequest) {
   try {
-    const { email } = await req.json();
-    if (!email) {
+    const { searchParams } = new URL(req.url);
+    const token = searchParams.get('token');
+    const userId = searchParams.get('userId');
+
+    if (!token || !userId) {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
     await startDb();
-    const user = await UserModel.findOne({ email });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const verificationToken = await VerificationTokenModel.findOne({ userId });
 
-    if (user.verified) {
+    if (!verificationToken || !verificationToken.compare(token)) {
       return NextResponse.json(
-        { error: 'Email is already verified' },
+        { error: 'Invalid verification token' },
         { status: 400 }
       );
     }
 
-    // Generate new verification token
-    const token = await createVerificationToken(user._id);
-
-    // TODO: Send verification email
-    // This will be implemented in the next step with email service
-
-    return NextResponse.json({
-      message: 'Verification email sent successfully'
-    });
+    return NextResponse.json({ valid: true });
   } catch (error) {
-    console.error('Resend verification error:', error);
+    console.error('Token validation error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Something went wrong' },
       { status: 500 }
     );
   }

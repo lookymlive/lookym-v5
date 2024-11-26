@@ -26,7 +26,7 @@ interface IUser {
 }
 
 interface IUserMethods {
-  compare(password: string): boolean;
+  comparePassword(password: string): boolean;
 }
 
 type UserModel = Model<IUser, {}, IUserMethods>;
@@ -85,7 +85,7 @@ userSchema.pre('save', function(next) {
 });
 
 // Add password comparison method
-userSchema.methods.compare = function(password: string) {
+userSchema.methods.comparePassword = function(password: string) {
   return compareSync(password, this.password || '');
 };
 

@@ -1,61 +1,59 @@
 import { auth } from "@/auth";
-import { NextResponse } from "next/server";
-import { v2 as cloudinary } from 'cloudinary';
+import { NextRequest, NextResponse } from "next/server";
+import VideoModel from "@/app/models/video";
+import startDb from "@/app/lib/db";
+import { uploadToCloudinary } from "@/app/utils/cloudinary";
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    
-    if (!session) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    if (session.user.role !== "store" && session.user.role !== "admin") {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-    }
-
-    const formData = await request.formData();
-    const file = formData.get("video") as File;
+    const formData = await req.formData();
+    const videoFile = formData.get("video") as File;
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
 
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    if (!videoFile || !title || !description) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    // Convert File to buffer for Cloudinary upload
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Connect to database
+    await startDb();
 
-    // Upload to Cloudinary
-    const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          resource_type: "video",
-          folder: "store_videos",
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      ).end(buffer);
+    // Upload video to Cloudinary
+    const uploadResult = await uploadToCloudinary(videoFile);
+
+    // Create video document
+    const video = await VideoModel.create({
+      title,
+      description,
+      url: uploadResult.secure_url,
+      thumbnailUrl: uploadResult.thumbnail_url,
+      userId: session.user.id,
+      duration: uploadResult.duration,
     });
 
-    // Here you would typically save the video metadata to your database
-    // Including the Cloudinary URL, title, description, and store owner info
-
-    return NextResponse.json({ success: true, result });
-  } catch (error) {
+    return NextResponse.json(video);
+  } catch (error: any) {
     console.error("Error uploading video:", error);
     return NextResponse.json(
-      { error: "Error uploading video" },
+      { error: "Failed to upload video" },
       { status: 500 }
     );
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};

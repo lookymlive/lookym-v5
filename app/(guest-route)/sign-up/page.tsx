@@ -73,7 +73,7 @@ const SignUp: FC<Props> = () => {
       btnLabel="Create Account"
       title="Sign Up"
       action={handleSubmit}
-      error={error || state?.error}
+      error={(error || state?.error) as string | undefined}
     >
       <Input
         type="text"

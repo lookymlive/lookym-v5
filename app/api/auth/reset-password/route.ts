@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const token = await createPasswordResetToken(user._id);
+    const token = await createPasswordResetToken(user._id.toString());
     
     // Send password reset email
     const emailData = generatePasswordResetEmail(email, token);

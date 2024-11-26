@@ -7,7 +7,7 @@
 │   │   │   └── page.tsx              # Pagina de componente de registro o creacion de cuenta
 │   │   ├── update-password           # ruta para el cambio de contraseña
 │   │   │   └── page.tsx              # Pagina de componente de cambio de contraseña
-│   │   └── forget-password           # ruta para el restablecimiento de contraseña
+│   │   └── update-password           # ruta para el restablecimiento de contraseña
 │   │   └── page.tsx                  # Pagina de componente de restablecimiento de contraseña
 │   └── layout.tsx                    # Layout de users (no logeados)
 │   ├── (private-route)               # ruta privadas o usuarios logeados
