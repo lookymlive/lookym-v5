@@ -5,7 +5,16 @@ const nextConfig = {
     return config;
   },
   images: {
-    domains: ["i.giphy.com", "images.unsplash.com"],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'i.giphy.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   },
   experimental: {
     serverActions: {
