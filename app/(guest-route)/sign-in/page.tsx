@@ -18,23 +18,24 @@ const SignIn: FC<Props> = () => {
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>("");
 
   const handleValidation = () => {
     if (!email || !password) {
       setError("Email and password are required");
       return false;
     }
-    setError(""); // Clear error message if validation passes
+    setError(null); // Clear error message if validation passes
     return true;
   };
 
-  const handleSubmit = (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (handleValidation()) {
+      const formData = new FormData();
       formData.append("email", email);
       formData.append("password", password);
-
-      formAction(formData);
+      await formAction(formData);
     }
   };
 
@@ -49,34 +50,34 @@ const SignIn: FC<Props> = () => {
         },
       ]}
       btnLabel="Sign In"
-      title="Log In"
-      action={handleSubmit}
-      error={error || (state?.error ?? undefined)}
+      title="Welcome Back"
+      error={(error ?? state?.error) ?? undefined}
+      onSubmit={handleSubmit}
     >
-      <Input
-        type="email"
-        label="Email"
-        placeholder="Enter your email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        classNames={{
-          input: "bg-transparent hover:bg-white/10 transition-colors",
-          inputWrapper: "bg-white/10 backdrop-blur-lg hover:bg-white/20 transition-all border-2 border-white/20",
-        }}
-      />
-      <Input
-        type="password"
-        label="Password"
-        placeholder="Enter your password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        classNames={{
-          input: "bg-transparent hover:bg-white/10 transition-colors",
-          inputWrapper: "bg-white/10 backdrop-blur-lg hover:bg-white/20 transition-all border-2 border-white/20",
-        }}
-      />
+      <div className="space-y-4">
+        <Input
+          isRequired
+          type="email"
+          label="Email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="max-w-xs"
+          isInvalid={!email.trim() && error !== null}
+          errorMessage={!email.trim() && error ? "Email is required" : ""}
+        />
+        <Input
+          isRequired
+          type="password"
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="max-w-xs"
+          isInvalid={!password.trim() && error !== null}
+          errorMessage={!password.trim() && error ? "Password is required" : ""}
+        />
+      </div>
     </AuthForm>
   );
 };

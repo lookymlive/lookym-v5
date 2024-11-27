@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Icons } from "@/components/ui/icons"
 import VideoUpload from "@/app/components/VideoUpload"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -11,6 +12,22 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
       </div>
+
+      {/* Profile Card */}
+      <Card className="mb-6">
+        <CardHeader className="flex flex-row items-center space-x-4 pb-2">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={session?.user?.image || ''} alt={session?.user?.name || ''} />
+            <AvatarFallback>{session?.user?.name?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+          </Avatar>
+          <div>
+            <CardTitle className="text-xl">{session?.user?.name}</CardTitle>
+            <p className="text-sm text-muted-foreground">{session?.user?.email}</p>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -62,52 +79,10 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Upload New Video</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <VideoUpload />
-          </CardContent>
-        </Card>
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              {[
-                {
-                  type: "like",
-                  content: "Someone liked your video",
-                  time: "2 minutes ago",
-                },
-                {
-                  type: "comment",
-                  content: "New comment on your video",
-                  time: "1 hour ago",
-                },
-                {
-                  type: "view",
-                  content: "Your video reached 100 views",
-                  time: "2 hours ago",
-                },
-              ].map((activity, index) => (
-                <div key={index} className="flex items-center">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {activity.content}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Video Upload Section */}
+      <div className="mt-8">
+        <h3 className="text-xl font-semibold mb-4">Subir Nuevo Video</h3>
+        <VideoUpload />
       </div>
     </div>
   )
