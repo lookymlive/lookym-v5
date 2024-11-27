@@ -14,7 +14,7 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import mail from "@/app/utils/mail";
 import streamifier from "streamifier";
-import cloud from "@/app/lib/cloud";
+
 import { uploadFileToCloud } from "@/app/utils/fileHandler";
 import PassResetTokenModel from "@/app/models/passwordResetToken";
 import { genSaltSync, hashSync } from "bcrypt";

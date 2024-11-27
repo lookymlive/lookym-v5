@@ -4,7 +4,7 @@ import Link from "next/link";
 import { continueWithGoogle } from "@/app/actions/auth";
 
 interface Props {
-  action?: FormHTMLAttributes<HTMLFormElement>["action"];
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   error?: string;
   btnLabel: string;
   title?: string;
@@ -19,13 +19,13 @@ const AuthForm: FC<Props> = ({
   error,
   children,
   footerItems,
-  action,
+  onSubmit,
   message,
 }) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/80 backdrop-blur-lg shadow-[0_8px_30px_rgb(0,0,0,0.12)] space-y-6">
-        <form action={action} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent">
               {title}

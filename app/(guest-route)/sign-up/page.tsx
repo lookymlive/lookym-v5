@@ -17,7 +17,7 @@ const SignUp: FC<Props> = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [showStoreDetails, setShowStoreDetails] = useState(false);
   const [storeName, setStoreName] = useState("");
   const [storeType, setStoreType] = useState("");
@@ -29,18 +29,24 @@ const SignUp: FC<Props> = () => {
   };
 
   const handleValidation = () => {
-    if (!name || !email || !password) {
-      setError("All fields are required");
-      return false;
+    let hasError = false;
+    
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError("Please fill in all required fields");
+      hasError = true;
     }
     
-    if (role === 'store' && (!storeName || !storeType)) {
-      setError("Store details are required");
-      return false;
+    if (email.trim() && !email.includes('@')) {
+      setError("Please enter a valid email address");
+      hasError = true;
     }
     
-    setError(""); // Clear error if validation passes
-    return true;
+    if (role === 'store' && (!storeName.trim() || !storeType.trim())) {
+      setError("Please fill in all store details");
+      hasError = true;
+    }
+    
+    return !hasError;
   };
 
   const handleSubmit = () => {
@@ -72,7 +78,7 @@ const SignUp: FC<Props> = () => {
       ]}
       btnLabel="Create Account"
       title="Sign Up"
-      action={handleSubmit}
+      onSubmit={handleSubmit}
       error={(error || state?.error) as string | undefined}
     >
       <Input
@@ -81,7 +87,10 @@ const SignUp: FC<Props> = () => {
         placeholder="Enter your name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        required
+        isRequired
+        isInvalid={!!(!name.trim() && error !== null)}
+        errorMessage={!name.trim() && error !== null ? "Name is required" : undefined}
+        className="max-w-xs"
       />
       <Input
         type="email"
@@ -89,7 +98,16 @@ const SignUp: FC<Props> = () => {
         placeholder="Enter your email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        required
+        isRequired
+        isInvalid={!!((!email.trim() || (email.trim() && !email.includes('@'))) && error !== null)}
+        errorMessage={
+          !email.trim() && error !== null 
+            ? "Email is required" 
+            : email.trim() && !email.includes('@') && error !== null 
+              ? "Please enter a valid email address" 
+              : undefined
+        }
+        className="max-w-xs"
       />
       <Input
         type="password"
@@ -97,7 +115,10 @@ const SignUp: FC<Props> = () => {
         placeholder="Create a password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        required
+        isRequired
+        isInvalid={!!(!password.trim() && error !== null)}
+        errorMessage={!password.trim() && error !== null ? "Password is required" : undefined}
+        className="max-w-xs"
       />
       <Select
         label="Account Type"
@@ -117,7 +138,10 @@ const SignUp: FC<Props> = () => {
             placeholder="Enter store name"
             value={storeName}
             onChange={(e) => setStoreName(e.target.value)}
-            required
+            isRequired
+            isInvalid={!!(!storeName.trim() && error !== null && role === 'store')}
+            errorMessage={!storeName.trim() && error !== null && role === 'store' ? "Store name is required" : undefined}
+            className="max-w-xs"
           />
           <Select
             label="Store Type"
@@ -129,6 +153,17 @@ const SignUp: FC<Props> = () => {
             <SelectItem key="shoes" value="shoes">Shoes</SelectItem>
             <SelectItem key="other" value="other">Other</SelectItem>
           </Select>
+          <Input
+            type="text"
+            label="Store Type"
+            placeholder="Enter store type"
+            value={storeType}
+            onChange={(e) => setStoreType(e.target.value)}
+            isRequired
+            isInvalid={!!(!storeType.trim() && error !== null && role === 'store')}
+            errorMessage={!storeType.trim() && error !== null && role === 'store' ? "Store type is required" : undefined}
+            className="max-w-xs"
+          />
           <Textarea
             label="Description"
             placeholder="Enter store description"

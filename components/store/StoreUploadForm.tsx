@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
 import { toast } from 'sonner';
+import { uploadMedia } from '@/app/lib/cloudinary';
 
 export default function StoreUploadForm(): React.JSX.Element {
   const router = useRouter();
@@ -26,16 +27,12 @@ export default function StoreUploadForm(): React.JSX.Element {
         formData.append('file', file);
         formData.append('upload_preset', 'lookym-stores');
 
-        const res = await fetch(
-          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-          {
-            method: 'POST',
-            body: formData,
-          }
-        );
-
-        const data = await res.json();
-        return data.secure_url;
+        const result = await uploadMedia(file, {
+          folder: 'lookym/stores',
+          resourceType: 'image',
+        });
+        
+        return result.secure_url;
       });
 
       const uploadedUrls = await Promise.all(uploadPromises);

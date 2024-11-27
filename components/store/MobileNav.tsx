@@ -58,7 +58,7 @@ export function MobileNav() {
           <span className="sr-only">Toggle Menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="pr-0">
+      <SheetContent className="pr-0">
         <SheetHeader>
           <SheetTitle className="flex items-center space-x-2">
             <Icons.store className="h-6 w-6" />

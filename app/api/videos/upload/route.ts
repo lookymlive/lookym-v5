@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import VideoModel from "@/app/models/video";
 import startDb from "@/app/lib/db";
-import { uploadToCloudinary } from "@/app/utils/cloudinary";
+import { uploadMedia, generateUrl } from "@/app/lib/cloudinary";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,15 +29,28 @@ export async function POST(req: NextRequest) {
     // Connect to database
     await startDb();
 
-    // Upload video to Cloudinary
-    const uploadResult = await uploadToCloudinary(videoFile);
+    // Upload video to Cloudinary with optimized settings
+    const uploadResult = await uploadMedia(videoFile, {
+      resourceType: 'video',
+      folder: 'lookym/videos',
+    });
+
+    // Generate thumbnail URL using Cloudinary's URL transformation
+    const thumbnailUrl = generateUrl(uploadResult.public_id, {
+      resource_type: 'video',
+      transformation: [
+        { width: 300, height: 169, crop: 'fill' }, // 16:9 aspect ratio
+        { format: 'jpg' },
+        { start_offset: 'auto' } // Automatically select a good thumbnail moment
+      ]
+    });
 
     // Create video document
     const video = await VideoModel.create({
       title,
       description,
       url: uploadResult.secure_url,
-      thumbnailUrl: uploadResult.thumbnail_url,
+      thumbnailUrl,
       userId: session.user.id,
       duration: uploadResult.duration,
     });

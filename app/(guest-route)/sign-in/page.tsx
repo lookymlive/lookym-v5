@@ -20,12 +20,23 @@ const SignIn: FC<Props> = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>("");
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleValidation = () => {
-    if (!email || !password) {
+    if (!email.trim() || !password.trim()) {
       setError("Email and password are required");
       return false;
     }
-    setError(null); // Clear error message if validation passes
+    
+    if (!validateEmail(email.trim())) {
+      setError("Please enter a valid email address");
+      return false;
+    }
+
+    setError(null);
     return true;
   };
 
@@ -35,7 +46,11 @@ const SignIn: FC<Props> = () => {
       const formData = new FormData();
       formData.append("email", email);
       formData.append("password", password);
-      await formAction(formData);
+      try {
+        await formAction(formData);
+      } catch (error) {
+        setError("Invalid email or password");
+      }
     }
   };
 
@@ -51,7 +66,7 @@ const SignIn: FC<Props> = () => {
       ]}
       btnLabel="Sign In"
       title="Welcome Back"
-      error={(error ?? state?.error) ?? undefined}
+      error={error ? "Invalid email or password" : undefined}
       onSubmit={handleSubmit}
     >
       <div className="space-y-4">
@@ -63,8 +78,8 @@ const SignIn: FC<Props> = () => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="max-w-xs"
-          isInvalid={!email.trim() && error !== null}
-          errorMessage={!email.trim() && error ? "Email is required" : ""}
+          isInvalid={(!email.trim() || (email.trim() && !validateEmail(email))) && error !== null ? true : false}
+          errorMessage={!email.trim() ? "Email is required" : (email.trim() && !validateEmail(email) ? "Please enter a valid email address" : "")}
         />
         <Input
           isRequired
@@ -75,7 +90,7 @@ const SignIn: FC<Props> = () => {
           onChange={(e) => setPassword(e.target.value)}
           className="max-w-xs"
           isInvalid={!password.trim() && error !== null}
-          errorMessage={!password.trim() && error ? "Password is required" : ""}
+          errorMessage={!password.trim() ? "Password is required" : ""}
         />
       </div>
     </AuthForm>
